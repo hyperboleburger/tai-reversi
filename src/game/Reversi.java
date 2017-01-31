@@ -182,6 +182,7 @@ public class Reversi {
 			for (int y = 0; y < 8; y++) {
 				int[][] childBoard = legalMove(currentBoard, x, y, activePlayer);
 				if (childBoard != null) {
+					printBoard(childBoard); // temporary debug check
 					node.addChild(childBoard);
 				}
 			}
@@ -253,5 +254,23 @@ public class Reversi {
 		}
 		System.out.println(output.toString());
 	}
-
+	
+	public void printBoard(int[][] board){
+		StringBuilder output = new StringBuilder("  a b c d e f g h \n");
+		for (int i = 0; i < 8; i++) {
+			output.append(i + 1);
+			for (int j = 0; j < 8; j++) {
+				output.append(" ");
+				if (board[i][j] == -1) {
+					output.append("O");
+				} else if (board[i][j] == 1) {
+					output.append("X");
+				} else {
+					output.append("-");
+				}
+			}
+			output.append("\n");
+		}
+		System.out.println(output.toString());
+	}
 }

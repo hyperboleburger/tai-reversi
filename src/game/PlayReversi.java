@@ -1,7 +1,5 @@
 package game;
 
-import java.util.ArrayList;
-
 import game.Reversi.BestMove;
 import treeStructure.Node;
 
@@ -20,6 +18,7 @@ public class PlayReversi {
 			BestMove bMove = game.miniMax(currentState, activePlayer ,depth);
 			game.setState(bMove.getBestNode());
 			game.printBoard();
+			game.changePlayer();
 		}
 		return;
 	}
