@@ -23,10 +23,13 @@ public class Reversi {
 	
 	public void setState(Node<int[][]> newState){
 		gameState = newState;
+		gameState.removeChildren();
+		gameState.removeParent();
 	}
 	
 	public void setBoard(int[][] newBoard){
 		gameState.removeChildren();
+		gameState.removeParent();
 		gameState.setData(newBoard);
 	}
 	
@@ -48,15 +51,15 @@ public class Reversi {
 			return null;
 		}
 		boolean legal = false;
-		int[][] copyBoard = currentBoard;
-		int flipped = 0;
+		int[][] newBoard = copyMatrix(currentBoard);
 		int dx = 0;
 		int dy = 0;
 
 		// Investigates each direction for possible flips
-		for (int i = 0; i < 8; i++) {
+		for (int i = 1; i < 9; i++) {
 			int tempx = x;
 			int tempy = y;
+			int flipped = 0;
 			switch (i) {
 			case 1:
 				dx = 1;
@@ -98,15 +101,15 @@ public class Reversi {
 				tempy += dy;
 				if (tempx < 0 || tempx > 7 || tempy < 0 || tempy > 7)
 					run = false;
-				else if (copyBoard[tempx][tempy] == 0)
+				else if (currentBoard[tempx][tempy] == 0)
 					run = false;
-				else if (copyBoard[tempx][tempy] != currentPlayer)
+				else if (currentBoard[tempx][tempy] != currentPlayer)
 					flipped++;
 				else if (flipped != 0) {
 					while (flipped != 0) {
 						tempx -= dx;
 						tempy -= dy;
-						copyBoard[tempx][tempy] = currentPlayer;
+						newBoard[tempx][tempy] = currentPlayer;
 						flipped--;
 					}
 					legal = true;
@@ -115,17 +118,22 @@ public class Reversi {
 					run = false;
 			}
 		}
-		if (legal == true)
-			return copyBoard;
-		else
+		if (legal == true){
+			newBoard[x][y] = currentPlayer;
+			return newBoard;
+		}
+		else{
 			return null;
+		}
 	}
 
 	// activePlayer = 1: MAXIMIZING, -1: MINIMIZING
 	// Risky implementation: expanding nodes in algorithm
 	public BestMove miniMax(Node<int[][]> node, int activePlayer, int depth) {
 		BestMove bMove = new BestMove();
-		expandNode(node, activePlayer);
+		if(node.getChildren().isEmpty()){
+			expandNode(node, activePlayer);
+		}
 		if (depth == 0 || node.getChildren().isEmpty()) {
 			bMove.value = utility(node);
 			bMove.node = node;
@@ -134,10 +142,8 @@ public class Reversi {
 		
 		if (activePlayer == 1) {
 			bMove.value = Integer.MIN_VALUE;
-			bMove.node = node;
-			expandNode(node, activePlayer);
 			for (Node<int[][]> n : node.getChildren()) {
-				int v = miniMax(n, depth - 1, -1).value;
+				int v = miniMax(n, -1, depth - 1).value;
 				if(v > bMove.value){
 					bMove.value = v;
 					bMove.node = n;
@@ -146,9 +152,8 @@ public class Reversi {
 			return bMove;
 		} else {
 			bMove.value = Integer.MAX_VALUE;
-			expandNode(node, activePlayer);
 			for (Node<int[][]> n : node.getChildren()) {
-				int v = miniMax(n, depth - 1, 1).value;
+				int v = miniMax(n, 1, depth - 1).value;
 				if(v < bMove.value){
 					bMove.value = v;
 					bMove.node = n;
@@ -158,12 +163,60 @@ public class Reversi {
 		}
 	}
 	
+	public BestMove alphaBeta(Node<int[][]> node, int activePlayer, int depth, int alpha, int beta, double startTime, double timeLimit){
+		BestMove bMove = new BestMove();
+		if(node.getChildren().isEmpty()){
+			expandNode(node, activePlayer);
+		}
+		if (depth == 0 || node.getChildren().isEmpty()) {
+			bMove.value = utility(node);
+			bMove.node = node;
+			return bMove;
+		}
+		
+		if (activePlayer == 1) {
+			bMove.value = Integer.MIN_VALUE;
+			for (Node<int[][]> n : node.getChildren()) {
+				if((System.nanoTime()-startTime)/1000000000.0 > timeLimit){
+					bMove.timedOut = true;
+					return bMove;
+				}
+				int v = alphaBeta(n, -1, depth - 1, alpha, beta, startTime, timeLimit).value;
+				if(v > bMove.value){
+					bMove.value = v;
+					bMove.node = n;
+				}
+				alpha = Integer.max(alpha, bMove.value);
+				if(beta <= alpha) break;
+			}
+			return bMove;
+		} else {
+			bMove.value = Integer.MAX_VALUE;
+			for (Node<int[][]> n : node.getChildren()) {
+				if((System.nanoTime()-startTime)/1000000000.0 > timeLimit){
+					bMove.timedOut = true;
+					return bMove;
+				}
+				int v = alphaBeta(n, 1, depth - 1, alpha, beta, startTime, timeLimit).value;
+				if(v < bMove.value){
+					bMove.value = v;
+					bMove.node = n;
+				}
+				beta = Integer.min(beta, bMove.value);
+				if(beta <= alpha) break;
+			}
+			return bMove;
+		}
+	}
+	
 	protected class BestMove{
 		private int value;
 		private Node<int[][]> node;
+		private boolean timedOut;
 		
 		private BestMove(){
 			value = 0;
+			timedOut = false;
 			node = new Node<int[][]>(null);
 		}
 		
@@ -174,6 +227,10 @@ public class Reversi {
 		public Node<int[][]> getBestNode(){
 			return node;
 		}
+		
+		public boolean timedOut(){
+			return timedOut;
+		}
 	}
 
 	private void expandNode(Node<int[][]> node, int activePlayer) {
@@ -182,7 +239,6 @@ public class Reversi {
 			for (int y = 0; y < 8; y++) {
 				int[][] childBoard = legalMove(currentBoard, x, y, activePlayer);
 				if (childBoard != null) {
-					printBoard(childBoard); // temporary debug check
 					node.addChild(childBoard);
 				}
 			}
@@ -272,5 +328,32 @@ public class Reversi {
 			output.append("\n");
 		}
 		System.out.println(output.toString());
+	}
+	
+	private int[][] copyMatrix(int[][] matrix){
+		int [][] newMatrix = new int[matrix.length][];
+		for(int i = 0; i < matrix.length; i++)
+		{
+		  int[] aMatrix = matrix[i];
+		  int   aLength = aMatrix.length;
+		  newMatrix[i] = new int[aLength];
+		  System.arraycopy(aMatrix, 0, newMatrix[i], 0, aLength);
+		}
+		return newMatrix;
+	}
+	
+	public boolean isGameOver(){
+		for(int x = 0; x < 8; x++){
+			for(int y = 0; y < 8; y++){
+				if(legalMove(gameState.getData(),x ,y, activePlayer) != null){
+					return false;
+				}
+			}
+		}
+		return true;
+	}
+	
+	public int calcWinner(){
+		return parityHeuristic(gameState);
 	}
 }

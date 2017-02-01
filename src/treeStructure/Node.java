@@ -1,7 +1,6 @@
 package treeStructure;
 
 import java.util.ArrayList;
-import java.util.List;
 
 public class Node<T> {
 	private ArrayList<Node<T>> children = new ArrayList<Node<T>>();
