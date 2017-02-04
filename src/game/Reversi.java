@@ -126,43 +126,8 @@ public class Reversi {
 			return null;
 		}
 	}
-
-	// activePlayer = 1: MAXIMIZING, -1: MINIMIZING
-	// Risky implementation: expanding nodes in algorithm
-	public BestMove miniMax(Node<int[][]> node, int activePlayer, int depth) {
-		BestMove bMove = new BestMove();
-		if(node.getChildren().isEmpty()){
-			expandNode(node, activePlayer);
-		}
-		if (depth == 0 || node.getChildren().isEmpty()) {
-			bMove.value = utility(node);
-			bMove.node = node;
-			return bMove;
-		}
-		
-		if (activePlayer == 1) {
-			bMove.value = Integer.MIN_VALUE;
-			for (Node<int[][]> n : node.getChildren()) {
-				int v = miniMax(n, -1, depth - 1).value;
-				if(v > bMove.value){
-					bMove.value = v;
-					bMove.node = n;
-				}
-			}
-			return bMove;
-		} else {
-			bMove.value = Integer.MAX_VALUE;
-			for (Node<int[][]> n : node.getChildren()) {
-				int v = miniMax(n, 1, depth - 1).value;
-				if(v < bMove.value){
-					bMove.value = v;
-					bMove.node = n;
-				}
-			}
-			return bMove;
-		}
-	}
 	
+	//ActivePlayer = 1 : MAXIMIZING; -1 : MINIMIZING
 	public BestMove alphaBeta(Node<int[][]> node, int activePlayer, int depth, int alpha, int beta, double startTime, double timeLimit){
 		BestMove bMove = new BestMove();
 		if(node.getChildren().isEmpty()){
@@ -177,10 +142,13 @@ public class Reversi {
 		if (activePlayer == 1) {
 			bMove.value = Integer.MIN_VALUE;
 			for (Node<int[][]> n : node.getChildren()) {
+				// Checks whether the minimax algorithm has run out of time
+				// in which case the search is terminated
 				if((System.nanoTime()-startTime)/1000000000.0 > timeLimit){
 					bMove.timedOut = true;
 					return bMove;
 				}
+				
 				int v = alphaBeta(n, -1, depth - 1, alpha, beta, startTime, timeLimit).value;
 				if(v > bMove.value){
 					bMove.value = v;
@@ -190,9 +158,12 @@ public class Reversi {
 				if(beta <= alpha) break;
 			}
 			return bMove;
-		} else {
+		}
+		else {
 			bMove.value = Integer.MAX_VALUE;
 			for (Node<int[][]> n : node.getChildren()) {
+				// Checks whether the minimax algorithm has run out of time
+				// in which case the search is terminated
 				if((System.nanoTime()-startTime)/1000000000.0 > timeLimit){
 					bMove.timedOut = true;
 					return bMove;
@@ -209,6 +180,7 @@ public class Reversi {
 		}
 	}
 	
+	//Inner class needed for output from minimax algorithm
 	protected class BestMove{
 		private int value;
 		private Node<int[][]> node;
@@ -233,6 +205,7 @@ public class Reversi {
 		}
 	}
 
+	//Used internally to get all children from a board-state
 	private void expandNode(Node<int[][]> node, int activePlayer) {
 		int[][] currentBoard = node.getData();
 		for (int x = 0; x < 8; x++) {
@@ -245,7 +218,9 @@ public class Reversi {
 		}
 	}
 
+	//Heuristic related to sheer number of bricks
 	private static int parityHeuristic(Node<int[][]> node) {
+		int weight = 100;
 		int nbrBlk = 0;
 		int nbrWht = 0;
 		int[][] board = node.getData();
@@ -257,10 +232,12 @@ public class Reversi {
 					nbrWht++;
 			}
 		}
-		return 100 * (nbrBlk - nbrWht) / (nbrBlk + nbrWht);
+		return weight * (nbrBlk - nbrWht) / (nbrBlk + nbrWht);
 	}
-
+	
+	//Heuristic related to number of bricks in corners
 	private static int cornerHeuristic(Node<int[][]> node) {
+		int weight = 100;
 		int nbrBlk = 0;
 		int nbrWht = 0;
 		int[][] board = node.getData();
@@ -280,38 +257,20 @@ public class Reversi {
 			nbrBlk++;
 		else if (board[0][7] == -1)
 			nbrWht++;
-
 		if (nbrBlk + nbrWht != 0) {
-			return 100 * (nbrBlk - nbrWht) / (nbrBlk + nbrWht);
+			return weight * (nbrBlk - nbrWht) / (nbrBlk + nbrWht);
 		} else
 			return 0;
 	}
 
+	//Calculates the utility value for a given board
 	private static int utility(Node<int[][]> node) {
 		return parityHeuristic(node) + cornerHeuristic(node);
 	}
 
+	// Prints the board into console
 	public void printBoard() {
 		int[][] board = gameState.getData();
-		StringBuilder output = new StringBuilder("  a b c d e f g h \n");
-		for (int i = 0; i < 8; i++) {
-			output.append(i + 1);
-			for (int j = 0; j < 8; j++) {
-				output.append(" ");
-				if (board[i][j] == -1) {
-					output.append("O");
-				} else if (board[i][j] == 1) {
-					output.append("X");
-				} else {
-					output.append("-");
-				}
-			}
-			output.append("\n");
-		}
-		System.out.println(output.toString());
-	}
-	
-	public void printBoard(int[][] board){
 		StringBuilder output = new StringBuilder("  a b c d e f g h \n");
 		for (int i = 0; i < 8; i++) {
 			output.append(i + 1);
@@ -342,10 +301,18 @@ public class Reversi {
 		return newMatrix;
 	}
 	
+	//Returns true if there are no possible moves for either player
 	public boolean isGameOver(){
 		for(int x = 0; x < 8; x++){
 			for(int y = 0; y < 8; y++){
-				if(legalMove(gameState.getData(),x ,y, activePlayer) != null){
+				if(legalMove(gameState.getData(),x ,y, 1) != null){
+					return false;
+				}
+			}
+		}
+		for(int x = 0; x < 8; x++){
+			for(int y = 0; y < 8; y++){
+				if(legalMove(gameState.getData(),x ,y, -1) != null){
 					return false;
 				}
 			}
